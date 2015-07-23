@@ -31,7 +31,9 @@ function loadSingle ( path, parentUrl, baseUrl, cache ) {
 						// to load.baseUrl
 						loadSingle( path, parentUrl, baseUrl, cache ).then( callback, reject );
 					},
-					require: ractiveRequire
+					require: function ( name ) {
+						return ractiveRequire( name, baseUrl );
+					}
 				}, fulfil, reject );
 			});
 		});
@@ -42,7 +44,7 @@ function loadSingle ( path, parentUrl, baseUrl, cache ) {
 	return promises[ url ];
 }
 
-function ractiveRequire ( name ) {
+function ractiveRequire ( name, baseUrl ) {
 	var dependency, qualified;
 
 	dependency = load.modules.hasOwnProperty( name ) ? load.modules[ name ] :
@@ -53,7 +55,7 @@ function ractiveRequire ( name ) {
 			dependency = require( name );
 		} catch (e) {
 			if (typeof process !== 'undefined') {
-				dependency = require( process.cwd() + '/' + name );
+				dependency = require( baseUrl + '/' + name );
 			} else {
 				throw e;
 			}
