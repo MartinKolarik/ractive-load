@@ -635,6 +635,62 @@ else {
 
 var get$1 = get;
 
+// Load multiple components:
+//
+//     Ractive.load({
+//       foo: 'path/to/foo.html',
+//       bar: 'path/to/bar.html'
+//     }).then( function ( components ) {
+//       var foo = new components.foo(...);
+//       var bar = new components.bar(...);
+//     });
+function loadMultiple ( map, baseUrl, cache ) {
+	var promise = new Ractive.Promise( function ( resolve, reject ) {
+		var pending = 0, result = {}, name, load;
+
+		load = function ( name ) {
+			var path = map[ name ];
+
+			loadSingle( path, baseUrl, baseUrl, cache ).then( function ( Component ) {
+				result[ name ] = Component;
+
+				if ( !--pending ) {
+					resolve( result );
+				}
+			}, reject );
+		};
+
+		for ( name in map ) {
+			if ( map.hasOwnProperty( name ) ) {
+				pending += 1;
+				load( name );
+			}
+		}
+	});
+
+	return promise;
+}
+
+rcu.init( Ractive );
+
+function load$1 ( url ) {
+	var baseUrl = load$1.baseUrl;
+	var cache = load$1.cache !== false;
+
+	if ( !url ) {
+		return loadFromLinks( baseUrl, cache );
+	}
+
+	if ( typeof url === 'object' ) {
+		return loadMultiple( url, baseUrl, cache );
+	}
+
+	return loadSingle( url, baseUrl, baseUrl, cache );
+}
+
+load$1.baseUrl = '';
+load$1.modules = {};
+
 var promises = {};
 var global = ( typeof window !== 'undefined' ? window : {} );
 // Load a single component:
@@ -660,7 +716,9 @@ function loadSingle ( path, parentUrl, baseUrl, cache ) {
 						// to load.baseUrl
 						loadSingle( path, parentUrl, baseUrl, cache ).then( callback, reject );
 					},
-					require: ractiveRequire
+					require: function ( name ) {
+						return ractiveRequire( name, baseUrl );
+					}
 				}, fulfil, reject );
 			});
 		});
@@ -671,10 +729,10 @@ function loadSingle ( path, parentUrl, baseUrl, cache ) {
 	return promises[ url ];
 }
 
-function ractiveRequire ( name ) {
+function ractiveRequire ( name, baseUrl ) {
 	var dependency, qualified;
 
-	dependency = load.modules.hasOwnProperty( name ) ? load.modules[ name ] :
+	dependency = load$1.modules.hasOwnProperty( name ) ? load$1.modules[ name ] :
 	             global.hasOwnProperty( name ) ? global[ name ] : null;
 
 	if ( !dependency && typeof require === 'function' ) {
@@ -682,7 +740,7 @@ function ractiveRequire ( name ) {
 			dependency = require( name );
 		} catch (e) {
 			if (typeof process !== 'undefined') {
-				dependency = require( process.cwd() + '/' + name );
+				dependency = require( baseUrl + '/' + name );
 			} else {
 				throw e;
 			}
@@ -743,42 +801,6 @@ function toArray ( arrayLike ) {
 	}
 
 	return arr;
-}
-
-// Load multiple components:
-//
-//     Ractive.load({
-//       foo: 'path/to/foo.html',
-//       bar: 'path/to/bar.html'
-//     }).then( function ( components ) {
-//       var foo = new components.foo(...);
-//       var bar = new components.bar(...);
-//     });
-function loadMultiple ( map, baseUrl, cache ) {
-	var promise = new Ractive.Promise( function ( resolve, reject ) {
-		var pending = 0, result = {}, name, load;
-
-		load = function ( name ) {
-			var path = map[ name ];
-
-			loadSingle( path, baseUrl, baseUrl, cache ).then( function ( Component ) {
-				result[ name ] = Component;
-
-				if ( !--pending ) {
-					resolve( result );
-				}
-			}, reject );
-		};
-
-		for ( name in map ) {
-			if ( map.hasOwnProperty( name ) ) {
-				pending += 1;
-				load( name );
-			}
-		}
-	});
-
-	return promise;
 }
 
 rcu.init( Ractive );
